@@ -19,7 +19,8 @@ uint64_t get_value(uint64_t n) {
 // Tę funkcję woła rdzeń.
 void put_value(uint64_t n, uint64_t v) {
   assert(n < N);
-  assert(v == n + 4);
+  // assert(v == n + 4);
+  printf("\nJestem put_value\n");
 }
 
 // To jest struktura służąca do przekazania do wątku parametrów
@@ -61,8 +62,12 @@ const char *B_test_forward_jump = "16B5+5+5+1+";
 const char *B_test_infinite_loop = "13-B";
 // wynik = 0
 const char *B_test_backward_jump = "0112-B";
-// test swapa: wynnik = 2
+// test swapa: wynik = 2
 const char *E_test = "12EC";
+// podstawowy test get_value. Wynik dla jednego rdzenia to 1.
+const char *G_basic = "GGGGG++++";
+// podstawowy test put_value. Wynik to 0:
+const char *P_basic = "01P";
 
 int main() {
   static pthread_t tid[N];
@@ -73,7 +78,7 @@ int main() {
     computation[1] = "01234n+P56789E-+D+*G*1n-+S2ED+E1-+75+-BC";
   }
   if (N == 1) {
-    computation[0] = E_test;
+    computation[0] = P_basic;
   }
   static const uint64_t result[2] = {112, 56};
 

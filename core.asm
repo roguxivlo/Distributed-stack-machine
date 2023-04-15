@@ -18,6 +18,8 @@ section .text
 
 core:
 ; Zapisujemy rsp w rbx, aby na koniec obliczenia zresetować stos:
+; Rejestru rbx nie może zmodyfikować funkcja zewnętrzna, zatem
+; nie trzeba się martwić wywołaniami put_value, get_value
         print   "initial stack: ", rsp
         push    rbx
         mov     rbx, rsp
@@ -156,12 +158,53 @@ core:
         ; Przed wywołaniem zewnętrznej funkcji, musimy upewnić się
         ; że nie stracimy wartości zapisanych w rejestrach, które
         ; funkcja może zmodyfikować. Zapamiętamy wartości tych
-        ; rejestrów na stosie.
-        print "G ", rdx
+        ; rejestrów na stosie. Musimy zadbać o rejestry:
+        ; rdi (wartość n)
+        ; rsi (wskaźnik na obecny znak obliczenia)
+        ; W rejestrze rdi powinno pozostać n, jako argument get_value,
+        ; ale nie mamy gwarancji że po powrocie z funkcji tam zostanie.
+        ; Zapisujemy więc te rejestry na stos:
+        print   "G. stack before saving: ", rsp
+        push    rdi
+        push    rsi
+        ; W rejestrze rdi jest już poprawny argument funkcji get_value.
+        ; Możemy ją więc zawołać.
+        print   "stack before get_value: ", rsp
+        call    get_value
+        print   "stack after get_value: ", rsp
+        ; Wynik funkcji znajduje się w rejestrze rax.
+        ; Musimy go wstawić na stos obliczeń. Wpierw jednak należy
+        ; odzyskać wartości rejestrów rsi i rdi (w tej kolejności):
+        pop     rsi
+        pop     rdi
+        ; Wstawiamy wartość funkcji na stos:
+        push rax
         jmp     .next_iter
 
 .put_value:
-        print "P ", rdx
+        ; Przed wywołaniem zewnętrznej funkcji, musimy upewnić się
+        ; że nie stracimy wartości zapisanych w rejestrach, które
+        ; funkcja może zmodyfikować. Zapamiętamy wartości tych
+        ; rejestrów na stosie. Musimy zadbać o rejestry:
+        ; rdi (wartość n)
+        ; rsi (wskaźnik na obecny znak obliczenia)
+        ; W rejestrze rdi powinno pozostać n, jako argument put_value,
+        ; ale nie mamy gwarancji że po powrocie z funkcji tam zostanie.
+        ; Zanim zapiszemy rejestry na stos, musimy zdjąć z niego
+        ; drugi argument funkcji put_value:
+        pop     rax
+        print "P. stack before saving: ", rsp
+        ; Zapisujemy teraz rejestry na stos:
+        push    rdi
+        push    rsi
+        ; W rejestrze rsi ma się znaleźć wartość zdjęta ze stosu:
+        mov     rsi, rax
+        print   "stack before put_value: ", rsp
+        call    put_value
+        print   "stack after put_value: ", rsp
+        ; Teraz zdejmujemy ze stosu zapisane wcześniej rejestry:
+        pop     rsi
+        pop     rdi
         jmp     .next_iter
 
 .sync:
@@ -169,5 +212,6 @@ core:
         jmp     .next_iter
 
 .next_iter:
+        ; Przechodzimy do kolejnego znaku obliczenia.
         inc rsi
         jmp     .main_loop
