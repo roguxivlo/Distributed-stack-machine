@@ -22,8 +22,8 @@ void put_value(uint64_t n, uint64_t v) {
   assert(v == n + 4);
 }
 
-// To jest struktura służąca do przekazania do wątku parametrów wywołania
-// rdzenia i zapisania wyniku obliczenia.
+// To jest struktura służąca do przekazania do wątku parametrów
+// wywołania rdzenia i zapisania wyniku obliczenia.
 typedef struct {
   uint64_t n, result;
   char const *p;
@@ -40,17 +40,29 @@ static void *core_thread(void *params) {
   while (wait == 0)
     ;
 
-  printf("n = %" PRIu64 ", result = %" PRIu64 "\n", cp->n, cp->result);
+  printf("n = %" PRIu64 ", result = %" PRIu64 "\n", cp->n,
+         cp->result);
 
   cp->result = core(cp->n, cp->p);
   // print n and result:
-  printf("n = %" PRIu64 ", result = %" PRIu64 "\n", cp->n, cp->result);
+  printf("n = %" PRIu64 ", result = %" PRIu64 "\n", cp->n,
+         cp->result);
 
   return NULL;
 }
 
 // Definicje różnych testowych obliczeń:
-const char* digits_only = "01DC";
+const char *digits_only = "0nDC";
+// bez skoku (0 na stosie)
+const char *B_test_no_jump = "01-B";
+// Z skokiem do przodu (poprawny wynik to 2)
+const char *B_test_forward_jump = "16B5+5+5+1+";
+// Pętla nieskończona:
+const char *B_test_infinite_loop = "13-B";
+// wynik = 0
+const char *B_test_backward_jump = "0112-B";
+// test swapa: wynnik = 2
+const char *E_test = "12EC";
 
 int main() {
   static pthread_t tid[N];
@@ -61,7 +73,7 @@ int main() {
     computation[1] = "01234n+P56789E-+D+*G*1n-+S2ED+E1-+75+-BC";
   }
   if (N == 1) {
-    computation[0] = digits_only;
+    computation[0] = E_test;
   }
   static const uint64_t result[2] = {112, 56};
 
@@ -74,17 +86,19 @@ int main() {
   }
 
   for (size_t n = 0; n < N; ++n)
-    assert(0 ==
-           pthread_create(&tid[n], NULL, &core_thread, (void *)&params[n]));
+    assert(0 == pthread_create(&tid[n], NULL, &core_thread,
+                               (void *)&params[n]));
 
   wait = 1;  // Wystartuj rdzenie.
 
-  for (size_t n = 0; n < N; ++n) assert(0 == pthread_join(tid[n], NULL));
+  for (size_t n = 0; n < N; ++n)
+    assert(0 == pthread_join(tid[n], NULL));
 
   // print results:
   for (int i = 0; i < N; i++) {
     printf("result[%d] = %" PRIu64 "\n", i, params[i].result);
   }
 
-  // for (size_t n = 0; n < N; ++n) assert(params[n].result == result[n]);
+  // for (size_t n = 0; n < N; ++n) assert(params[n].result ==
+  // result[n]);
 }

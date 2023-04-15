@@ -7,7 +7,7 @@ extern put_value
 section .text
 
 ; Makro do wypisywania, do debugowania.
-;%include "macro_print.asm"
+%include "macro_print.asm"
 
 ; Argumenty funkcji core:
 ;
@@ -18,7 +18,7 @@ section .text
 
 core:
 ; Zapisujemy rsp w rbx, aby na koniec obliczenia zresetować stos:
-        ;print   "initial stack: ", rsp
+        print   "initial stack: ", rsp
         push    rbx
         mov     rbx, rsp
 
@@ -80,28 +80,28 @@ core:
 .put_digit:
         mov cl, '0'
         sub     dl, cl                    ; Rejestr dl zawiera numeryczną wartość liczby.
-        ;print   "digit = ", rdx         ; debug
-        ;print   "before: ", rsp
+        print   "digit = ", rdx         ; debug
+        print   "before: ", rsp
         push    rdx                     ; wstawiamy liczbę na stos.
         jmp     .next_iter
 
 .return:
         pop     rax                     ; ładujemy szczyt stosu jako wynik
-        ;print   "the end. current stack after pop: ", rsp
+        print   "the end. current stack after pop: ", rsp
         mov     rsp, rbx                ; resetujemy stos do stanu sprzed wywołania funkcji.
-        ;print   "stack restored: ", rsp
+        print   "stack restored: ", rsp
         pop     rbx
         ret
 
 .plus:
         pop     rax                     ; zdejmij pierwszą liczbę ze stosu
-        ;print   "+ ", rax
+        print   "+ ", rax
         add     [rsp], rax              ; dodaj ją do wierzchołka stosu
         jmp     .next_iter
 
 .multiply:
         pop     rax                     ; zdejmij pierwszą liczbę ze stosu
-        ;print   "* ", rax
+        print   "* ", rax
         mul     qword [rsp]             ; pomnóż ją przez wierzchołek stosu
         add     rsp, 8                  ; zdejmij ze stosu drugą liczbę
         push    rax                     ; wstaw wynik na stos
@@ -109,44 +109,63 @@ core:
 
 .negate:
         pop     rax                     ; zdejmij liczbę ze stosu
-        ;print   "- ", rax               ; debugowanie
+        print   "- ", rax               ; debugowanie
         neg     rax                     ; zmień znak liczby
         push    rax                     ; wstaw liczbę na stos
         jmp     .next_iter
 
 .push_core_id:
-        ;print   "push n ", rdx
+        print   "push n ", rdx
         push    rdi                     ; wstaw id rdzenia na stos
         jmp     .next_iter
 
 .jump_back:
-        ;print "B ", rdx
+        print "B ", rdx
+        pop     rax                     ; zdejmij wartość ze stosu
+        cmp     qword [rsp], 0                ; Sprawdź, czy na wierzchołku stosu jest 0.
+        jz      .next_iter              ; jeśli tak to nic nie rób
+                                        ; (przejdź do następnego polecenia).
+
+        ; Jeśli w wierzchołku jest coś niezerowego, przesunięcie po obliczeniu
+        ; realizujemy przez dodanie wartości w rax od wskaźnika (rsi). Po dodaniu
+        ; i tak nastąpi inkrementacja rsi.
+        add     rsi, rax
+        print   "jump by: ", rax
         jmp     .next_iter
 
 .throw_away:
-        ;print "C ", rdx
-        add     rsp, 8                  ; zdejmij ze stosu liczbę
+        print "C ", rdx
+        add     rsp, 8                  ; zdejmij ze stosu liczbę i porzuć ją.
         jmp     .next_iter
 
 .duplicate:
-        ;print "D ", rdx
+        print "D ", rdx
         push    qword [rsp]                   ; wstaw na stos kopię szczytowego elementu
         jmp     .next_iter
 
 .swap:
-        ;print "E ", rdx
+        print "E ", rdx
+        mov     rax, [rsp + 8]          ; zapisujemy na boku wartość drugiego elementu na stosie
+        mov     rcx, [rsp]              ; zapisujemy na boku wartość szczytu stosu.
+        mov     [rsp + 8], rcx        ; drugi element przyjmuje wartość szczytu stosu.
+        mov     [rsp], rax              ; szczyt stosu dostaje wartość drugiego elementu.
+        ; Wymiana jest kompletna.
         jmp     .next_iter
 
 .get_value:
-        ;print "G ", rdx
+        ; Przed wywołaniem zewnętrznej funkcji, musimy upewnić się
+        ; że nie stracimy wartości zapisanych w rejestrach, które
+        ; funkcja może zmodyfikować. Zapamiętamy wartości tych
+        ; rejestrów na stosie.
+        print "G ", rdx
         jmp     .next_iter
 
 .put_value:
-        ;print "P ", rdx
+        print "P ", rdx
         jmp     .next_iter
 
 .sync:
-        ;print "S ", rdx
+        print "S ", rdx
         jmp     .next_iter
 
 .next_iter:
