@@ -92,7 +92,7 @@ core:
         print   "the end. current stack after pop: ", rsp
         mov     rsp, rbx                ; resetujemy stos do stanu sprzed wywołania funkcji.
         print   "stack restored: ", rsp
-        pop     rbx
+        pop     rbx                     ; odzyskujemy pierwotną wartość rbx
         ret
 
 .plus:
@@ -168,8 +168,17 @@ core:
         push    rdi
         push    rsi
         ; W rejestrze rdi jest już poprawny argument funkcji get_value.
-        ; Możemy ją więc zawołać.
-        print   "stack before get_value: ", rsp
+        ; Zanim zawołamy get_value, należy upewnić się że
+        ; wskaźnik stosu jest podzielny przez 16.
+        ; Poniższe instrukcje realizują sprawdzenie. Jeśli rsp nie jest
+        ; wielokrotnością 16, wykona się skok do etykiety
+        ; .get_value_with_alignment, która zadba o wyrównanie stosu.
+        mov     rax, rsp
+        and     rax, 0x0000000F         ; badamy ostatnią cyfrę wskaźnika stosu.
+        ; Jeśli ostatnia cyfra nie jest 0, to skaczemy do etykiety
+        ; wyrównującej stos:
+        jnz     .get_value_with_alignment
+        print   "stack aligned before get_value: ", rsp
         call    get_value
         print   "stack after get_value: ", rsp
         ; Wynik funkcji znajduje się w rejestrze rax.
@@ -179,6 +188,19 @@ core:
         pop     rdi
         ; Wstawiamy wartość funkcji na stos:
         push rax
+        jmp     .next_iter
+
+; To jest etykieta, która wyrównuje rsp do wielokrotności 16
+; przed rozkazem call.
+.get_value_with_alignment:
+        print   "Aligning stack which is now: ", rsp
+        sub     rsp, 8
+        print   "Stack is now aligned: ", rsp
+        call    get_value
+        add     rsp, 8
+        pop     rsi
+        pop     rdi
+        push    rax
         jmp     .next_iter
 
 .put_value:
@@ -199,10 +221,28 @@ core:
         push    rsi
         ; W rejestrze rsi ma się znaleźć wartość zdjęta ze stosu:
         mov     rsi, rax
-        print   "stack before put_value: ", rsp
+        ; Poniższe instrukcje realizują sprawdzenie. Jeśli rsp nie jest
+        ; wielokrotnością 16, wykona się skok do etykiety
+        ; .get_value_with_alignment, która zadba o wyrównanie stosu.
+        mov     rax, rsp
+        and     rax, 0x0000000F
+        jnz     .put_value_with_alignment
+        print   "stack aligned before put_value: ", rsp
         call    put_value
         print   "stack after put_value: ", rsp
         ; Teraz zdejmujemy ze stosu zapisane wcześniej rejestry:
+        pop     rsi
+        pop     rdi
+        jmp     .next_iter
+
+; To jest etykieta, która wyrównuje rsp do wielokrotności 16
+; przed rozkazem call.
+.put_value_with_alignment:
+        print   "Aligning stack which is now: ", rsp
+        sub     rsp, 8
+        print   "Stack is now aligned: ", rsp
+        call    put_value
+        add     rsp, 8
         pop     rsi
         pop     rdi
         jmp     .next_iter
