@@ -67,8 +67,8 @@ const char *B_test_backward_jump = "0112-B";
 const char *E_test = "12EC";
 // podstawowy test get_value. Wynik dla jednego rdzenia to 1.
 const char *G_basic = "GGGGG++++";
-// podstawowy test put_value. Wynik to 0:
-const char *P_basic = "01P";
+// podstawowy test put_value. Wynik to 1:
+const char *P_basic = "012+P1P";
 
 int main() {
   static pthread_t tid[N];

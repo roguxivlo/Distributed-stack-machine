@@ -4,6 +4,20 @@ global core
 extern get_value
 extern put_value
 
+section .data
+; Tablica, w której wątek wykonujący S umieści numer wątku z którym
+; ma się zsynchronizować. Inicjowana wartością N
+; ponieważ żaden wątek nie ma takiego id:
+align 8
+adr: times N dq N
+
+section .bss
+; Tablica, w której wątki zsynchronizowane 
+; ze sobą umieszczają wartości do wymiany.
+; Tablica jest nieinicjowana.
+align 8
+val resq N
+
 section .text
 
 ; Makro do wypisywania, do debugowania.
@@ -16,6 +30,7 @@ section .text
 ; rdi = n (numer rdzenia)
 ; rsi = p (wskaźnik na zapis obliczenia)
 
+align 16
 core:
 ; Zapisujemy rsp w rbx, aby na koniec obliczenia zresetować stos:
 ; Rejestru rbx nie może zmodyfikować funkcja zewnętrzna, zatem
