@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 // Ustalamy liczbę rdzeni.
-#define N 1
+#define N 2
 
 // To jest deklaracja funkcji, którą trzeba zaimplementować.
 uint64_t core(uint64_t n, char const *p);

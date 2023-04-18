@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-N=1
+N=2
 
 vpath %.asm ../rozwiazania
 

@@ -8,14 +8,12 @@ section .data
 ; Tablica, w której wątek wykonujący S umieści numer wątku z którym
 ; ma się zsynchronizować. Inicjowana wartością N
 ; ponieważ żaden wątek nie ma takiego id:
-align 8
 adr: times N dq N
 
 section .bss
 ; Tablica, w której wątki zsynchronizowane 
 ; ze sobą umieszczają wartości do wymiany.
 ; Tablica jest nieinicjowana.
-align 8
 val resq N
 
 section .text
@@ -137,7 +135,7 @@ core:
         jmp     .next_iter
 
 .jump_back:
-        print "B ", rdx
+        print   "B ", rdx
         pop     rax                     ; zdejmij wartość ze stosu
         cmp     qword [rsp], 0                ; Sprawdź, czy na wierzchołku stosu jest 0.
         jz      .next_iter              ; jeśli tak to nic nie rób
@@ -151,17 +149,17 @@ core:
         jmp     .next_iter
 
 .throw_away:
-        print "C ", rdx
+        print   "C ", rdx
         add     rsp, 8                  ; zdejmij ze stosu liczbę i porzuć ją.
         jmp     .next_iter
 
 .duplicate:
-        print "D ", rdx
+        print   "D ", rdx
         push    qword [rsp]                   ; wstaw na stos kopię szczytowego elementu
         jmp     .next_iter
 
 .swap:
-        print "E ", rdx
+        print   "E ", rdx
         mov     rax, [rsp + 8]          ; zapisujemy na boku wartość drugiego elementu na stosie
         mov     rcx, [rsp]              ; zapisujemy na boku wartość szczytu stosu.
         mov     [rsp + 8], rcx        ; drugi element przyjmuje wartość szczytu stosu.
@@ -230,7 +228,7 @@ core:
         ; Zanim zapiszemy rejestry na stos, musimy zdjąć z niego
         ; drugi argument funkcji put_value:
         pop     rax
-        print "P. stack before saving: ", rsp
+        print   "P. stack before saving: ", rsp
         ; Zapisujemy teraz rejestry na stos:
         push    rdi
         push    rsi
@@ -263,10 +261,44 @@ core:
         jmp     .next_iter
 
 .sync:
-        print "S ", rdx
+        print   "S ", rdx
+        ; załaduj numer drugiego wątku m.
+        pop     rax
+        ; val[n] = [rsp], udostępniamy szczyt stosu
+        mov     rcx, [rsp]
+        lea     rdx, [rel val]
+        mov     [rdx + 8 * rdi], rcx
+        lea     rcx, [rel adr]
+        ; adr[n] = m, zaznaczamy że n czeka na m:
+        mov     [rcx + 8 * rdi], rax
+        ; teraz czekamy na wątek m.
+        ; while (adr[m] != n) {czekaj}
+.spin_lock:
+        ; r8 = adr[m]
+        mov     r8, [rcx + 8 * rax]
+        ; jeśli r8 != n, to czekamy:
+        cmp     r8, rdi
+        jnz     .spin_lock
+        ; jeśli adr[m] == n, to kończymy pętlę i rozpoczynamy wymianę wartości.
+.exchange:
+        ; Teraz wiemy, że wątek m udostępnił nam swoją wartość do wymiany.
+        ; pobieramy ją zatem na nasz stos:
+        ; [rsp] = val[m]
+        mov     r8, [rdx + 8 * rax]
+        mov     [rsp], r8
+        ; zaznaczamy adr[m] = m, żeby wątek wiedział że
+        ; przeczytaliśmy i może iść dalej. Potem sami
+        ; czekamy na sygnał od tamtego wątku.
+        mov     [rcx + 8 * rax], rax
+.spin_lock2:
+        ; while (adr[n] != n) {czekaj}
+        mov     r8, [rcx + 8 * rdi]
+        cmp     r8, rdi
+        jnz     .spin_lock2
+        
         jmp     .next_iter
 
 .next_iter:
         ; Przechodzimy do kolejnego znaku obliczenia.
-        inc rsi
+        inc     rsi
         jmp     .main_loop
